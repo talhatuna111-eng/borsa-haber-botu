@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canlı Borsa Haber Akışı</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Borsa Haber">
     <style>
-        /* Matriks Tarzı Karanlık Tema */
         body {
             background-color: #121212;
             color: #ffffff;
@@ -22,7 +24,6 @@
             max-width: 800px;
             margin: 0 auto;
         }
-        /* Bildirim Butonu Tasarımı */
         #bildirim-butonu {
             background-color: #2979ff;
             color: white;
@@ -36,16 +37,12 @@
             border-radius: 8px;
             transition: 0.3s;
         }
-        #bildirim-butonu:hover {
-            background-color: #1565c0;
-        }
         .haber-karti {
             background-color: #1e1e1e;
             border-left: 5px solid #00e676;
             padding: 15px;
             margin-bottom: 10px;
             border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             animation: fadeIn 0.5s;
         }
         .haber-basligi { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
@@ -58,17 +55,14 @@
 
     <div id="haber-kutusu">
         <button id="bildirim-butonu" onclick="izinIsteVeTestEt()">🔔 BİLDİRİM İZNİ VER VE TEST ET</button>
-        
         <h2>🔴 CANLI HABER AKIŞI</h2>
-        <div id="haber-listesi">
-            </div>
+        <div id="haber-listesi"></div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // SİZİN BİREBİR FIREBASE BİLGİLERİNİZ
         const firebaseConfig = {
             apiKey: "AIzaSyAeFkN_HfhzgOnqUHgtrdcpm8PhBO8fPHY",
             authDomain: "borsahaberbot.firebaseapp.com",
@@ -80,46 +74,37 @@
             measurementId: "G-HBRG6VCP3M"
         };
 
-        // Firebase'i Başlat
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const haberListesi = document.getElementById('haber-listesi');
+        
+        // Bildirim Sesi
+        const bildirimSesi = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
 
-        // --- BİLDİRİM İZNİ VE TEST FONKSİYONU ---
         function izinIsteVeTestEt() {
             if (!("Notification" in window)) {
-                alert("Bu tarayıcı bildirimleri desteklemiyor.");
+                alert("Lütfen önce bu siteyi Safari'den 'Ana Ekrana Ekle' yapın ve oradan açın!");
                 return;
             }
 
-            // İzin iste ve anında test bildirimi yolla
             Notification.requestPermission().then(permission => {
                 if (permission === "granted") {
-                    new Notification("✅ SİSTEM BAŞARILI!", {
-                        body: "Borsa bildirimleri aktif edildi.",
+                    new Notification("✅ SİSTEM AKTİF", {
+                        body: "Haberler artık anlık bildirim olarak gelecek.",
                         icon: "https://cdn-icons-png.flaticon.com/512/2965/2965879.png"
                     });
-                    // İzin başarılıysa butonu ekrandan gizle
-                    document.getElementById("bildirim-butonu").style.display = "none"; 
-                } else {
-                    alert("Lütfen Chrome ayarlarından bildirimlere İZİN VERİN.");
+                    document.getElementById("bildirim-butonu").style.display = "none";
                 }
             });
         }
 
-        // --- VERİTABANI DİNLEME (Sadece yeni haberlere bildirim atar) ---
         let ilkYuklemeBitti = false;
-        
-        // Önce veritabanındaki mevcut verileri hafızaya al (Bunlara bildirim çalmaması için)
         database.ref('haberler').limitToLast(1).once('value', () => {
             ilkYuklemeBitti = true;
         });
 
-        // Veritabanına yeni bir veri eklendiğinde tetiklenen kısım
         database.ref('haberler').on('child_added', (snapshot) => {
             const haber = snapshot.val();
-            
-            // 1. Haberi Ekrana (Listeye) Bas
             const haberKarti = document.createElement('div');
             haberKarti.className = 'haber-karti';
             haberKarti.innerHTML = `
@@ -132,17 +117,12 @@
             `;
             haberListesi.prepend(haberKarti);
 
-            // 2. Sadece SİSTEM ÇALIŞTIKTAN SONRA DÜŞEN YENİ VERİLER için Chrome Bildirimi Gönder
             if (ilkYuklemeBitti && Notification.permission === "granted") {
-                const n = new Notification(`🔴 YENİ HABER: ${haber.hisse}`, {
-                    body: `${haber.baslik}\nKaynak: ${haber.kaynak}`,
+                bildirimSesi.play().catch(e => console.log("Ses çalma hatası:", e));
+                new Notification(`🔴 ${haber.hisse}`, {
+                    body: haber.baslik,
                     icon: "https://cdn-icons-png.flaticon.com/512/2965/2965879.png"
                 });
-                
-                // Bildirime tıklanınca habere gitsin veya sekmeyi açsın
-                n.onclick = function() { 
-                    window.focus(); 
-                };
             }
         });
     </script>
