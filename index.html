@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canlı Borsa Haber Akışı</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Borsa Haber">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2965/2965879.png">
+    
     <style>
         body {
             background-color: #121212;
@@ -35,7 +37,7 @@
             width: 100%;
             margin-bottom: 20px;
             border-radius: 8px;
-            transition: 0.3s;
+            display: block;
         }
         .haber-karti {
             background-color: #1e1e1e;
@@ -77,25 +79,38 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const haberListesi = document.getElementById('haber-listesi');
-        
-        // Bildirim Sesi
         const bildirimSesi = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
 
-        function izinIsteVeTestEt() {
+        // Sayfa her açıldığında izin durumunu kontrol et
+        window.addEventListener('load', () => {
+            if (Notification.permission === "granted") {
+                document.getElementById("bildirim-butonu").style.display = "none";
+                // Service worker'ı her açılışta tazelemek için kaydet
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('sw.js');
+                }
+            }
+        });
+
+        async function izinIsteVeTestEt() {
             if (!("Notification" in window)) {
-                alert("Lütfen önce bu siteyi Safari'den 'Ana Ekrana Ekle' yapın ve oradan açın!");
+                alert("Lütfen önce bu siteyi Safari'den 'Ana Ekrana Ekle' yapın!");
                 return;
             }
 
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    new Notification("✅ SİSTEM AKTİF", {
-                        body: "Haberler artık anlık bildirim olarak gelecek.",
-                        icon: "https://cdn-icons-png.flaticon.com/512/2965/2965879.png"
-                    });
-                    document.getElementById("bildirim-butonu").style.display = "none";
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                // iPhone için kritik Service Worker kaydı
+                if ('serviceWorker' in navigator) {
+                    await navigator.serviceWorker.register('sw.js');
                 }
-            });
+                
+                new Notification("✅ SİSTEM AKTİF", {
+                    body: "Bildirimler kalıcı olarak aktif edildi.",
+                    icon: "https://cdn-icons-png.flaticon.com/512/2965/2965879.png"
+                });
+                document.getElementById("bildirim-butonu").style.display = "none";
+            }
         }
 
         let ilkYuklemeBitti = false;
