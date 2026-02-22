@@ -12,15 +12,16 @@
         h2 { color: #00e676; border-bottom: 2px solid #333; padding-bottom: 10px; }
         #haber-kutusu { max-width: 800px; margin: 0 auto; }
         
-        #bildirim-butonu { background-color: #2979ff; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; margin-bottom: 15px; cursor: pointer; }
-        
+        #bildirim-butonu { background-color: #2979ff; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; margin-bottom: 15px; cursor: pointer; transition: 0.3s;}
+        #bildirim-butonu:hover { background-color: #1565c0; }
+
         .haber-karti { background-color: #1e1e1e; border-left: 5px solid #00e676; padding: 15px; margin-bottom: 10px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         .haber-karti:hover { background-color: #2a2a2a; }
         .haber-basligi { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
         .haber-detay { font-size: 12px; color: #aaaaaa; margin-top: 5px; }
         .hisse-etiketi { background-color: #333; color: #ffea00; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
         
-        /* Haber Okuma Penceresi (Modal) Tasarımı */
+        /* Haber Okuma Penceresi (Modal) */
         .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
         .modal-icerik { background-color: #1e1e1e; margin: 10% auto; padding: 20px; border: 1px solid #333; width: 90%; max-width: 600px; border-radius: 8px; position: relative; }
         .kapat-butonu { color: #aaaaaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -68,32 +69,23 @@
         const haberListesi = document.getElementById('haber-listesi');
         const bildirimSesi = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
 
-        // Modal (Haber Okuma Penceresi) Fonksiyonları
+        // Modal Fonksiyonları
         function haberiAc(baslik, icerik, link) {
             document.getElementById("modal-baslik").innerText = baslik;
-            
-            // Eğer içerik boş gelirse kullanıcıya bilgi ver
             if (!icerik || icerik === "Detay bulunamadı." || icerik.trim() === "") {
                 document.getElementById("modal-metin").innerText = "Bu haberin detay metni kaynak sitede bulunamadı. Orijinal kaynağa giderek okuyabilirsiniz.";
             } else {
                 document.getElementById("modal-metin").innerText = icerik;
             }
-            
             document.getElementById("modal-orijinal-link").href = link;
             document.getElementById("haberModal").style.display = "block";
         }
 
-        function modalKapat() {
-            document.getElementById("haberModal").style.display = "none";
-        }
+        function modalKapat() { document.getElementById("haberModal").style.display = "none"; }
 
         // Android Bildirim İzni
         function bildirimAyarla() {
-            if (!("Notification" in window)) {
-                alert("Tarayıcınız bildirimleri desteklemiyor.");
-                return;
-            }
-            
+            if (!("Notification" in window)) { alert("Tarayıcınız bildirimleri desteklemiyor."); return; }
             Notification.requestPermission().then(permission => {
                 if (permission === "granted") {
                     document.getElementById("bildirim-butonu").style.display = "none";
@@ -105,7 +97,6 @@
             });
         }
 
-        // Sayfa açıldığında daha önce izin verilmişse butonu gizle
         window.addEventListener('load', () => {
             if (Notification.permission === "granted") {
                 document.getElementById("bildirim-butonu").style.display = "none";
@@ -115,13 +106,15 @@
         let ilkYuklemeBitti = false;
         database.ref('haberler').limitToLast(1).once('value', () => { ilkYuklemeBitti = true; });
 
-        // Yeni haberleri dinle
+        // Veritabanını Dinle
         database.ref('haberler').on('child_added', (snapshot) => {
             const haber = snapshot.val();
+            
+            // UNDEFINED ENGELLEYİCİ: Bozuk veriyi ekrana basma
+            if (!haber || !haber.baslik || haber.baslik === "undefined") { return; }
+
             const haberKarti = document.createElement('div');
             haberKarti.className = 'haber-karti';
-            
-            // Haberin tamamını tıklanabilir yapıyoruz.
             haberKarti.onclick = function() { haberiAc(haber.baslik, haber.icerik, haber.link); };
 
             haberKarti.innerHTML = `
@@ -134,7 +127,6 @@
             `;
             haberListesi.prepend(haberKarti);
 
-            // Yeni haber geldiğinde bildirim at ve ses çal
             if (ilkYuklemeBitti && Notification.permission === "granted") {
                 bildirimSesi.play().catch(e => console.log("Ses çalma hatası:", e));
                 new Notification(`🔴 ${haber.hisse} Haberi`, { 
